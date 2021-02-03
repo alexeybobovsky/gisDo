@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Мониторинг оборудования</title>
+	<meta charset="utf-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!--link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.0-rc.3/dist/leaflet.css" /-->
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7/leaflet.css" />
+	<!--link rel="stylesheet" href="/gis/src/style.css" type="text/css">
+	<link rel="stylesheet" href="/gis/src/jquery-ui.css"-->
+	<link rel="stylesheet" href="src/style.css" type="text/css">
+	<link rel="stylesheet" href="src/jquery-ui.css">
+
+	<script src="inc/jquery/jquery.js"></script>
+	<script src="inc/jquery/jquery-ui.min.js"></script>
+	<script src="inc/jquery/jquery.jeditable.js"></script>
+	
+	<script src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js"></script>
+	<script src="http://api-maps.yandex.ru/2.0/?load=package.map&lang=ru-RU" type="text/javascript"></script>	
+	<script src="inc/leaflet/leaflet-plugins-1.9.0/layer/tile/Yandex.js"></script>
+	<script src="inc/leaflet/leaflet-plugins-1.9.0/layer/tile/Bing.js"></script>
+	<script src="inc/leaflet/leaflet.sector-master/leaflet.sector.js"></script>
+	<script src="inc/leaflet/leaflet-2gis-master/dgis.js"></script>
+	<script src="http://maps.api.2gis.ru/1.0" type="text/javascript"></script>
+	<script src="inc/leaflet/L.GeoSearch-master/src/js/l.control.geosearch.js"></script>
+	<!--script src="inc/leaflet/L.GeoSearch-master/src/js/l.geosearch.provider.openstreetmap.js"></script-->
+	<script src="inc/leaflet/L.GeoSearch-master/src/js/l.geosearch.provider.google.js"></script>
+	
+	<link rel="stylesheet" href="inc/leaflet/L.GeoSearch-master/src/css/l.geosearch.css" />	
+
+	<script src="inc/JS/service.js" type="text/javascript"></script>		
+	<script src="inc/JS/userInterface.js" type="text/javascript"></script>		
+	<script src="bsList.js" type="text/javascript"></script>		
+	<script>
+var titleString = 'Система мониторинга базовых станций (демо режим)';
+var UI = new userInterface();   	
+var GIS = new gisRoutine();   	
+var coords = []; 		
+var locationList = [];
+var orgList = [];
+var BSType = [];
+var BSLoad = [];
+var BSIndex, BSIndexOver, BSSectorOver;
+var bStations = new Array();
+var ekoRegSimple = new Array();
+var  styleSectorBusy = {
+											"color": "#0078ff",
+											"fillColor": "#ff0000",											
+											"weight": 1,
+											"fillOpacity": 0.2,
+											"opacity": 0.5
+										}; 
+var  styleSectorEmpty = {
+											"color": "#0078ff",
+											"fillColor": "#00ff00",											
+											"weight": 1,
+											"fillOpacity": 0.2,
+											"opacity": 0.5
+										}; 
+										
+function gisRoutine()	
+	{
+	this.setTitle = function(type, string)
+		{
+		var strout='';
+		switch (type)
+			{
+			case 'org' : {strout = 'Станции арендодателя <strong>' + string + '</strong>'}
+				break;
+			case 'location' : {strout = 'Станции, расположенные в <strong>' + string + '</strong>'}
+				break;
+			case 'type' : {strout = 'Станции производителя <strong>' + string + '</strong>'}
+				break;
+			case 'load' : {strout = 'Станции в статусе <strong>' + string + '</strong>'}
+				break;
+			
+			}
+		return strout;		
+		}
+	this.showEdtPanel = function(index)
+		{
+		BSIndex = index;
+		$('#panObjTitle').text(bStations[index].titleStr);	
+		$('.objPropItem').css({'display' : 'none'});
+		if(bStations[index].type !='')
+			{
+			$('#panType').text(bStations[index].type);
+			$('#panContType').css({'display' : 'block'});
+			}			
+		if(bStations[index].ssid !='')
+			{
+			$('#panSsid1').text(bStations[index].ssid);
+			$('#panContSsid1').css({'display' : 'block'});
+			}			
+	/*	if(bStations[index].ssid !='')
+			{
+			$('#panSsid2').text(bStations[index].ssid);
+			$('#panContSsid2').css({'display' : 'block'});
+			}			*/
+		if(bStations[index].IP !='')
+			{
+			$('#panIP').text(bStations[index].IP);
+			$('#panContIP').css({'display' : 'block'});
+			}			
+		if(bStations[index].VLAN !='')
+			{
+			$('#panVLAN').text(bStations[index].VLAN);
+			$('#panContVLAN').css({'display' : 'block'});
+			}			
+		if(bStations[index].abonSector1 !='')
+			{
+			$('#panAbonSector1').text(bStations[index].abonSector1);
+			$('#panContSector1').css({'display' : 'block'});
+			}			
+		if(bStations[index].abonSector2 !='')
+			{
+			$('#panAbonSector2').text(bStations[index].abonSector2);
+			$('#panContSector2').css({'display' : 'block'});
+			}			
+		if(bStations[index].state !='')
+			{
+			$('#panState').text(bStations[index].state);
+			$('#panContState').css({'display' : 'block'});
+			}			
+		if(bStations[index].situation !='')
+			{
+			$('#panSituation').text(bStations[index].situation);
+			$('#panContSituation').css({'display' : 'block'});
+			}			
+		if(bStations[index].coordSrc !='')
+			{
+			$('#panCoordSrc').text(bStations[index].coordSrc);
+			$('#panContCoordSrc').css({'display' : 'block'});
+			}			
+		if(bStations[index].azimuthStr !='')
+			{
+			$('#panAzimuthStr').text(bStations[index].azimuthStr);
+			$('#panContAzimuthStr').css({'display' : 'block'});
+			}			
+		if(bStations[index].org !='')
+			{
+			$('#panOrg').text(bStations[index].org);
+			$('#panContOrg').css({'display' : 'block'});
+			}			
+		if(bStations[index].dateEnter !='')
+			{
+			$('#panDateEnter').text(bStations[index].dateEnter);
+			$('#panContDateEnter').css({'display' : 'block'});
+			}			
+		if(bStations[index].comment !='')
+			{
+			$('#panComment').text(bStations[index].comment);
+			$('#panConComment').css({'display' : 'block'});
+			}			
+		UI.togglePanel('', 'detContaner', 0, '' );
+		bStations[index].poly[0].closePopup();
+		if(bStations[index].poly[1] != undefined) 
+			bStations[index].poly[1].closePopup();
+		}
+	this.menuToggle = function(index)
+		{
+		$('#show_accList').toggleClass('pushed');
+		$('#menuListContaner').css({'top' : '30px'});
+		$('#menuListContaner').slideToggle("slow");
+		}
+	this.BSListItemClick = function(index)
+		{
+		bStations[index].poly[0].openPopup();
+		mymap.setView(bStations[index].poly[0].coordPoint);
+		}
+	this.BSListItemOver = function(index)
+		{
+		bStations[index].poly[0].setStyle({'fillOpacity' : 0.6});
+		if(bStations[index].poly[1] != undefined) 
+			bStations[index].poly[1].setStyle({'fillOpacity' : 0.6});		
+		}
+	this.BSListItemOut = function(index)
+		{
+		bStations[index].poly[0].setStyle({'fillOpacity' : 0.2});
+		if(bStations[index].poly[1] != undefined) 
+			bStations[index].poly[1].setStyle({'fillOpacity' : 0.2});		
+		}
+	this.showTitle = function(x, y, title){
+		if($('#titlePoly').css('display') != 'block')
+			{
+			$('#titlePoly').css({'display' : 'block', 'left' : x, 'top' : y});
+			$('#titlePoly').text(title);
+			}
+		}
+	this.hideTitle = function(){
+			$('#titlePoly').css({'display' : 'none'});
+		}
+	this.genBSList = function(type, string, contaner)
+		{
+		var bsList = [];
+		var lats = []; var lngs = [];             
+		var htmCont = "<ul id='accItemEnd'>";
+		$("#titleBar").html(GIS.setTitle( type , string ));		
+		for(var k=0; k<bStations.length; k++)
+			{
+			if(((type='org')&&(bStations[k].org == string)) ||
+				((type='location')&&(bStations[k].situation.indexOf(string)>=0))||
+				((type='load')&&(bStations[k].state.indexOf(string)>=0))||
+				((type='type')&&(bStations[k].type.indexOf(string)>=0))
+				)
+				{
+				bStations[k].poly[0].addTo(mymap);
+				lats.push(bStations[k].poly[0].coordPoint[0]);
+				lngs.push(bStations[k].poly[0].coordPoint[1]);
+				if(bStations[k].poly[1] != undefined) 
+					{
+					bStations[k].poly[1].addTo(mymap);
+					lats.push(bStations[k].poly[1].coordPoint[0]);
+					lngs.push(bStations[k].poly[1].coordPoint[1]);
+					}
+
+				bsList.push(bStations[k].ssid);
+				htmCont += "<li><span class='activeLink' id='accItemBS_" + k + "' onMouseOver='GIS.BSListItemOver(" + k + ");' onMouseOut='GIS.BSListItemOut(" + k + 
+									");' onClick='  GIS.BSListItemClick(" + k + ");'>" + 
+								bStations[k].ssid + "</span></li>";				
+				}
+			else 
+				{
+				mymap.removeLayer(bStations[k].poly[0]);				
+				if(bStations[k].poly[1] != undefined) mymap.removeLayer(bStations[k].poly[1]);	
+				}
+			}
+//		console.log( showProperties(bsList, 'bsList'));
+		minlat = lats.min() - 0.03;
+		maxlat = lats.max() + 0.03;
+		minlng = lngs.min() - 0.03;
+		maxlng = lngs.max() +  0.03;
+		mymap.fitBounds([[minlat,minlng],[maxlat,maxlng]]);
+
+		htmCont += "</ul>";
+		$('.accBSList').slideUp("fast");
+		$('.accBSList').html('');
+		$('#' + contaner).html(htmCont);
+		$('#' + contaner).slideDown("fast");
+		}
+	this.genOrgList = function(list)
+		{
+		var htmCont = "<ul class='accItem'>";		
+		for(var k=0; k<list.length; k++)
+			{
+			htmCont += "<li><span class='activeLink' id='accItem_" + k + "' onClick='GIS.genBSList(\"org\", \"" + list[k] + "\", \"BSListCont_org_" + k + "\");'>" + list[k] + "</span></li>" + 
+						"<div class='accBSList' id='BSListCont_org_" + k + "'></div>";
+			}
+		htmCont += "</ul>";
+		$('#orgContaner').html(htmCont);
+		}
+	this.genLocList = function(list)
+		{
+		var htmCont = "<ul class='accItem'>";		
+		for(var k=0; k<list.length; k++)
+			{
+			htmCont += "<li><span class='activeLink' id='accItem_" + k + "' onClick='GIS.genBSList(\"location\", \"" + list[k] + "\", \"BSListCont_loc_" + k + "\");'>" + list[k] + "</span></li>" + 
+						"<div class='accBSList' id='BSListCont_loc_" + k + "'></div>";
+			}
+		htmCont += "</ul>";
+		$('#locContaner').html(htmCont);
+		}
+	this.genTypeList = function(list)
+		{
+		var htmCont = "<ul class='accItem'>";		
+		for(var k=0; k<list.length; k++)
+			{
+			htmCont += "<li><span class='activeLink' id='accItem_" + k + "' onClick='GIS.genBSList(\"type\", \"" + list[k] + "\", \"BSListCont_type_" + k + "\");'>" + list[k] + "</span></li>" + 
+						"<div class='accBSList' id='BSListCont_type_" + k + "'></div>";
+			}
+		htmCont += "</ul>";
+		$('#typeContaner').html(htmCont);
+		}
+	this.genLoadList = function(list)
+		{
+		var htmCont = "<ul class='accItem'>";		
+		for(var k=0; k<list.length; k++)
+			{
+			htmCont += "<li><span class='activeLink' id='accItem_" + k + "' onClick='GIS.genBSList(\"load\", \"" + list[k] + "\", \"BSListCont_load_" + k + "\");'>" + list[k] + "</span></li>" + 
+						"<div class='accBSList' id='BSListCont_load_" + k + "'></div>";
+			}
+		htmCont += "</ul>";
+		$('#loadContaner').html(htmCont);
+		}
+	}
+function addBS(id, extId, type, ssid, IP, VLAN, abonSector1, abonSector2, state, situation, coord, azimuth, org, dateEnter, comment, titleStr)	
+	{
+	this.id = id;
+	this.extId = extId;
+	this.type = type;
+	this.ssid = ssid;
+	this.IP = IP;
+	this.VLAN = VLAN;
+	this.abonSector1 = abonSector1;
+	this.abonSector2 = abonSector2;
+	this.state = state;
+	this.situation = situation;
+	this.coordSrc = coord;
+/*	this.coordTmp = this.gradConvertDemo(coord);*/
+	this.azimuthStr = azimuth;
+	this.org = org;
+	this.dateEnter = dateEnter;
+	this.comment = comment;
+	this.azimuth = [];
+	this.titleStr = titleStr;
+	this.polyStyleHover = new Array();
+	this.polyStyle = new Array();
+	this.poly = new Array();	
+	this.gradConvertDemo = function(gStr){
+		var strArr = gStr.split("##  С  ");
+//		var gradX = gradY = '';
+		var coord = [];
+		var min = sec = grad = '';
+		for(var k=0; k<strArr.length; k++)
+			{
+//			console.log(gStr + ':   ' + strArr[k] + ' + calc [' + k  + ']');
+			min = sec = grad = '';
+			fstArr = strArr[k].split('°');
+			secArr = 	fstArr[1].split('?');
+			min = 		secArr[0];
+			sec = 		UI.GetStrPrt(secArr[1], '#', 0);
+			grad =  	(k>0) ? fstArr[0] : UI.GetStrPrt(fstArr[0], '#', 1);
+			coord[k] = parseInt(grad) +  (parseInt(min) + sec/60)/60;
+//			console.log(gStr + ':   ' + strArr[k] + ' + calc [' + k  + ']' + ' = ' + coord[k]);
+			}
+//		return '[' + coord[0] + ' , ' + coord[1] + ']';
+		return coord;
+		}
+	}	
+$(document).ready(function(){
+	UI.setSize();   
+	$('#mapid').css({'height' : UI.documentHeight-($('#topContaner').height()+35)});				
+	$('#mapid').css({'width' : UI.documentWidth});
+	$('#menuListContaner').css({'max-height' : $('#mapid').height()});
+	$('#menuListContaner .accContent').css({'max-height' : $('#mapid').height()*0.7});
+	$('#accList').accordion( {fillSpace:true} );
+	$('#show_accList').bind("click", 	function () {GIS.menuToggle(); /*BSList($('#menuListContaner').slideToggle("slow");*/} 	);	
+	$('#menuListContaner').css({'display' : 'none'});
+	$('#titlePoly').bind("mouseover", 	function () {bStations[BSIndexOver].poly[BSSectorOver].setStyle({'fillOpacity' : 0.6}); $(this).css({'display' : 'block'})});
+	$('#titlePoly').bind("mouseout", 	function () {bStations[BSIndexOver].poly[BSSectorOver].setStyle({'fillOpacity' : 0.2});  $(this).css({'display' : 'none'})});
+	$('#titlePoly').bind("click", 	function () {bStations[BSIndexOver].poly[BSSectorOver].openPopup();  $(this).css({'display' : 'none'})});
+	$('#titleBar').text(titleString);
+
+	$('.p_value, .p_valueTextArea, .p_valueText, .p_valueSelect, p_valueSelectState, p_valueSelectType').css({'cursor':'pointer'/*, 		'border-bottom': '1px dashed inherit'*/});
+	$('.p_valueTextArea').css({'cursor':'pointer'/*, 		'border-bottom': '1px dashed inherit'*/});
+	$('.p_valueSelect').css({'cursor':'pointer'/*, 		'border-bottom': '1px dashed inherit'*/});
+	$('.p_value').editable(function(value, settings) {console.log(settings); console.log(this); /* bStations[BSIndex].state = settings.data[value]; return(settings.data[value]); */return value; }, { 
+		 data		:	function(value, settings) { return  /*(isNumeric(value)) ? */ value /*: '';*/},
+		 submitdata :  	function(value, settings) {return  {apId: 'demo'}},
+		 type      : 'text',
+		 cancel    : 'отмена',
+		 submit    : 'OK',
+		 indicator : '<img src="/src/images/blueBars.gif">',
+		 tooltip   : 'изменить...'
+	 });
+	$('.p_valueSelectType').editable(function(value, settings) {bStations[BSIndex].type = settings.data[value];  return(settings.data[value]); }, { 
+		 submitdata :  function(value, settings) {return  {index: $('#BSIndex').val()}},
+		 data 		:   {'1':'Mikrotik','2':'Alvarion'},
+		 type      : 'select',
+		 cancel    : 'отмена',
+		 submit    : 'OK',
+		 indicator : '<img src="/src/images/blueBars.gif">',
+		 tooltip   : 'изменить...'
+	 });	
+	 $('.p_valueSelectState').editable(function(value, settings) { bStations[BSIndex].state = settings.data[value]; return(settings.data[value]);  }, { 
+		 submitdata :  function(value, settings) {return  {index: $('#apId').val()}},
+		 data 		:   {'1':'Загружена','2':'Незагружена'},
+		 type      : 'select',
+		 cancel    : 'отмена',
+		 submit    : 'OK',
+		 indicator : '<img src="/src/images/blueBars.gif">',
+		 tooltip   : 'изменить...'
+	 });
+	$('.p_valueText').editable(function(value, settings) { return(value); }, { 
+		 submitdata :  function(value, settings) {return  {apId: 'demo'}},
+		 type      : 'text',
+		 cancel    : 'отмена',
+		 submit    : 'OK',
+		 indicator : '<img src="/src/images/blueBars.gif">',
+		 tooltip   : 'изменить...'
+	 });
+	$('.p_valueTextArea').editable('', { 
+		 submitdata :  function(value, settings) {return  {apId: 'demo'}},
+		 type      : 'textarea',
+		 cancel    : 'отмена',
+		 submit    : 'OK',
+		 indicator : '<img src="/src/images/blueBars.gif">',
+		 tooltip   : 'изменить...'
+	 });
+	
+	parseBSList();
+	});
+	$(window).bind("resize", function() {UI.setSize()});
+	function parseBSList(){
+		var valArr, optionsPlacemark, coordPoint, minlat, maxlat, minlng, maxlng, bbox, popupContent1,  popupContent2, styleSectorHover, styleSector, location;
+		var lats = []; var lngs = [];             
+		var strArr = BScontent.split("~");        
+		for(var k=0; k<strArr.length; k++)        
+			{
+			if(strArr[k].length>20)
+				{
+				var azArr = [];
+				valArr = strArr[k].split(';');
+//				console.log(k + ' .- ' + strArr[k] );
+				if(	!in_array(valArr[11], orgList))
+					orgList.push(valArr[11]);
+				location = UI.GetStrPrt(valArr[8], ',', 0);
+				if(	!in_array(location, locationList))
+					locationList.push(location);
+				if(	!in_array(valArr[1], BSType))
+					BSType.push(valArr[1]);
+				if(	!in_array(valArr[7], BSLoad))
+					BSLoad.push(valArr[7]);
+				bStations[k] = new addBS(0, 
+					valArr[0],
+					valArr[1],
+					valArr[2],
+					valArr[3],
+					valArr[4],
+					valArr[5],
+					valArr[6],
+					valArr[7],
+					valArr[8],
+					valArr[9],
+					valArr[10],
+					valArr[11],
+					valArr[12],
+					valArr[13],
+					location + ', ' + valArr[2]
+					);
+				coordPoint = bStations[k].gradConvertDemo(valArr[9]);
+				lats.push(coordPoint[0]);
+				lngs.push(coordPoint[1]);				
+				
+
+				popupContent1 = "<div class='balContaner'><div class='balMainInfo'><div class='balName'>" + valArr[2] + 
+								"</div><div ><span>Абоненты</span>: " + valArr[5] + ' / '+ valArr[6] +
+								"</div><div ><span>Статус</span>: " + valArr[7] + 
+								"</div><div ><span>Арендодатель</span>: " + valArr[11] + 
+								"</div><div ><span>Тип БС</span>: " + valArr[1] + 
+								"</div><div ><span>Расположение</span>: " + valArr[8] + '</div></div>';
+				popupContent2 = popupContent1;				
+				popupContent1 += '<div class="balManage"> <span  id="bbInfo" class="activeLink" onClick="GIS.showEdtPanel(' + k + ')">Подробно</span>&nbsp;&nbsp;' +    
+						'<span id="bbHide" class="activeLink" onClick="mymap.removeLayer(bStations[' + k + '].poly[0])">Скрыть</span>&nbsp;&nbsp;' +    
+						'<span id="bbBack" class="activeLink" onClick="bStations[' + k + '].poly[0].bringToBack().closePopup()">На задний план</span>'+ 
+				'</div>'
+				'</div>';
+				popupContent2 +=  '<div class="balManage"> <span  id="bbInfo" class="activeLink" onClick="GIS.showEdtPanel(' + k + ')">Подробно</span>&nbsp;&nbsp;' +    
+						'<span id="bbHide" class="activeLink" onClick="mymap.removeLayer(bStations[' + k + '].poly[1])">Скрыть</span>&nbsp;&nbsp;' +    
+						'<span id="bbBack" class="activeLink" onClick="bStations[' + k + '].poly[1].bringToBack().closePopup()">На задний план</span>'+ 
+				'</div>'
+				'</div>';
+				
+				styleSector = (valArr[7].indexOf('Загружен') >=0 ) ? styleSectorBusy : styleSectorEmpty;
+				if(valArr[10].indexOf(',') >=0)
+					azArr = valArr[10].split(',');
+				else if(valArr[10].indexOf('/') >= 0)
+					azArr = valArr[10].split('/');
+				if(azArr.length>0)
+					{
+					bStations[k].azimuth[0] = parseInt(azArr[0]);
+					bStations[k].azimuth[1] = parseInt(azArr[1]);
+					}
+				else
+					bStations[k].azimuth[0] = parseInt(valArr[10]);
+				bStations[k].poly[0] = L.sector(coordPoint, 4000, 90, bStations[k].azimuth[0], styleSector).addTo(mymap);
+				bStations[k].poly[0].index = 		k;
+				bStations[k].poly[0].title = 		valArr[2];
+				bStations[k].poly[0].coordPoint = 	coordPoint;
+				bStations[k].poly[0].on("mouseout", function (e) { this.setStyle({'fillOpacity' : 0.2}); GIS.hideTitle(); /*BSSectorOver=-1; BSIndexOver = -1;*/});   
+				bStations[k].poly[0].on("mouseover", function (e) { this.setStyle({'fillOpacity' : 0.6});  BSIndexOver = this.index; BSSectorOver=0; GIS.showTitle(e.originalEvent.clientX, e.originalEvent.clientY, this.title)});   
+				bStations[k].poly[0].bindPopup(popupContent1);
+				if(azArr.length>0)
+					{
+					bStations[k].poly[1] = L.sector(coordPoint, 4000, 90, bStations[k].azimuth[1], styleSector).addTo(mymap);
+					bStations[k].poly[1].index = 		k;
+					bStations[k].poly[1].title = valArr[2];
+					bStations[k].poly[1].coordPoint = 	coordPoint;
+					bStations[k].poly[1].on("mouseout", function (e) { this.setStyle({'fillOpacity' : 0.2}); GIS.hideTitle(); /*BSSectorOver=-1; BSIndexOver = -1;*/});   
+					bStations[k].poly[1].on("mouseover", function (e) {this.setStyle({'fillOpacity' : 0.6}); BSIndexOver = this.index; BSSectorOver=1; GIS.showTitle(e.originalEvent.clientX, e.originalEvent.clientY, this.title) });   
+					bStations[k].poly[1].bindPopup(popupContent2);
+					}
+				}
+			}
+		minlat = lats.min();
+		maxlat = lats.max();
+		minlng = lngs.min();
+		maxlng = lngs.max();
+		bbox = [[minlat,minlng],[maxlat,maxlng]];
+		mymap.fitBounds(bbox);
+//		console.log( showProperties(bStations[3], 'BS - 3'));
+//		console.log(minlat  + ' : ' +  maxlat + ' | ' +  minlng + ' : ' +  maxlng);
+		GIS.genOrgList(orgList.sort());
+		GIS.genTypeList(BSType.sort());
+		GIS.genLoadList(BSLoad.sort());
+		GIS.genLocList(locationList.sort());
+//		L.rectangle(bbox).addTo(mymap);
+/*		console.log( showProperties(BSType, 'BS - 3'));
+		console.log( showProperties(BSLoad, 'BS - 3'));*/
+		}
+	</script>
+</head>
+<body>
+<div id="topToolBarContaner">
+<div id="topToolBar">
+	<div id='userAuth'>
+		<span class='' title="Списки станций" id="show_accList">Базовые станции</span>
+	</div>
+	<div id='titleBar'>
+		
+		<!--span>
+		Поиск по сайту
+		</span>
+		<input type = 'text' id="searchFast" name="searchFast" class="input_fast_search" value="Введите поисковый запрос..."  onFocus='this.value=""; ' onBlur='clearSearchbarF()'/>  
+		<span id='resMessageF'></span--> 
+
+	</div>
+	<div id='compare' >
+	</div>
+	<div id='moveUp'>
+	 <span title='вверх' id='up' onClick='$(window).scrollTop(0);'>&uarr;</span>
+	</div>
+</div>	
+</div>	
+	<div id="titlePoly" >
+	</div>
+	<div id="mapid" style=''>
+	</div>
+	
+	<script>
+	var mymap = L.map('mapid');	
+	</script>
+	<script src="inc/JS/baseLayers.js" type="text/javascript"></script>	
+	<script>
+	</script>
+	<div id="menuListContaner">
+		<div id='accList'>
+		<div class='accHeader' id="place">Населённые пункты</div>
+			<!--span id='tst'>Тест</span-->
+			<div class='accContent' id="locContaner"  >			
+				<ul class='accItem'>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>Черемховский р-он, г. Свирск РТПЦ              </span></li>
+				</ul>
+			</div>
+
+		<div class='accHeader' id="loadHeader">Загрузка</div>
+			<div class='accContent' id="loadContaner">			
+			</div>
+		<div class='accHeader' id="typeHeader">Тип оборудования</div>
+			<div class='accContent'id="typeContaner" >
+			</div>
+		<div class='accHeader' id="org">Арендодатели</div>
+			<div class='accContent' id="orgContaner" >
+			</div>
+		</div>
+	</div>
+	<div id="detContaner" style="">
+		<div id="panClose"><img src="src/images/smallno.gif" onclick="UI.togglePanel('', 'detContaner', 1, '')" title="Закрыть панель" alt="Закрыть панель" id="closePanelImg" /></div>            
+		<div class='objTitle' id="panObjTitle">
+			с.Мойган, АМС "Т2 Мобайл"
+		</div>
+		<div class='objPropertiesContaner'>
+			<div  id='panContType'  class='objPropItem'>
+				<div class='objPropName'>
+				Тип БС
+				</div>
+				<div id='panType' class='objPropValue p_valueSelectType'>
+				Mikrotik
+				</div>
+			</div>
+			<div   id='panContSsid1'  class='objPropItem'>
+				<div class='objPropName'>
+				SSID 1 сектор
+				</div>
+				<div  id='panSsid1' class='objPropValue p_valueText'>
+				Moygan1MT
+				</div>
+			</div>
+			<div   id='panContSsid2'  class='objPropItem'>
+				<div class='objPropName'>
+				SSID 2 сектор
+				</div>
+				<div id='panSsid2' class='objPropValue p_valueText'>
+				 Moygan12MT
+				</div>
+			</div>
+			<div  id='panContIP'   class='objPropItem'>
+				<div class='objPropName'>
+				IP
+				</div>
+				<div id='panIP' class='objPropValue p_valueText'>
+				 192.168.165.11
+				</div>
+			</div>
+			<div   id='panContVLAN'  class='objPropItem'>
+				<div class='objPropName'>
+				VLAN
+				</div>
+				<div id='panVLAN'class='objPropValue p_value'>
+				 532
+				</div>
+			</div>
+			<div   id='panContSector1'  class='objPropItem'>
+				<div class='objPropName'>
+				Абон 1 сектор
+				</div>
+				<div id='panAbonSector1' class='objPropValue p_value'>
+				 11
+				</div>
+			</div>
+			<div   id='panContSector2'  class='objPropItem'>
+				<div class='objPropName'>
+				Абон 2 сектор
+				</div>
+				<div  id='panAbonSector2' class='objPropValue p_value'>
+				10
+				</div>
+			</div>
+			<div   id='panContState'  class='objPropItem'>
+				<div class='objPropName'>
+				Статус
+				</div>
+				<div id='panState'  class='objPropValue p_valueSelectState'>
+				 Незагружена
+				</div>
+			</div>
+			<div   id='panContSituation'  class='objPropItem'>
+				<div class='objPropName'>
+				Расположение
+				</div>
+				<div  id='panSituation'  class='objPropValue p_valueText'>
+				 с.Мойган, АМС "Т2 Мобайл"
+				</div>
+			</div>
+			<div   id='panContCoordSrc'  class='objPropItem'>
+				<div class='objPropName'>
+				Координаты
+				</div>
+				<div id='panCoordSrc' class='objPropValue p_valueText'>
+				 53°20'47.94"С  102°14'38.88"В
+				</div>
+			</div>
+			<div   id='panContAzimuthStr'  class='objPropItem'>
+				<div class='objPropName'>
+				Азимут
+				</div>
+				<div id='panAzimuthStr' class='objPropValue p_value'>
+				230 / 180
+				</div>
+			</div>
+			<div   id='panContOrg'  class='objPropItem'>
+				<div class='objPropName'>
+				Арендодатель
+				</div>
+				<div  id='panOrg' class='objPropValue p_valueText'>
+				Т2 Мобайл
+				</div>
+			</div>
+			<div   id='panContDateEnter'  class='objPropItem'>
+				<div class='objPropName'>
+				Дата ввода в строй
+				</div>
+				<div id='panDateEnter' class='objPropValue p_valueText'>
+				15.10.2015
+				</div>
+			</div>
+			<div   id='panConComment'  class='objPropItem'>
+				<div class='objPropName'>
+				Примечание
+				</div>
+				<div id='panComment' class='objPropValue p_valueText'>
+				в работе
+				</div>
+			</div>
+		</div>
+		
+	</div>
+
+</body>
+</html>

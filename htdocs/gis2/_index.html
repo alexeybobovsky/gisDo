@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>РКО 2.0</title>
+	<meta charset="utf-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<!--link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.0-rc.3/dist/leaflet.css" /-->
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7/leaflet.css" />
+	<link rel="stylesheet" href="/gis2/src/style.css" type="text/css">
+	<!--link rel="stylesheet" href="src/style.css" type="text/css"-->
+	<link rel="stylesheet" href="src/jquery-ui.css" -->
+
+	<script src="inc/jquery/jquery.js"></script>
+	
+	<script src="http://cdn.leafletjs.com/leaflet-0.7/leaflet.js"></script>
+	<script src="http://api-maps.yandex.ru/2.0/?load=package.map&lang=ru-RU" type="text/javascript"></script>	
+	<script src="inc/leaflet/leaflet-plugins-1.9.0/layer/tile/Yandex.js"></script>
+	<script src="inc/leaflet/leaflet-plugins-1.9.0/layer/tile/Bing.js"></script>
+	<script src="inc/leaflet/leaflet.sector-master/leaflet.sector.js"></script>
+	<script src="inc/leaflet/leaflet-2gis-master/dgis.js"></script>
+	<script src="http://maps.api.2gis.ru/1.0" type="text/javascript"></script>
+	<script src="inc/leaflet/L.GeoSearch-master/src/js/l.control.geosearch.js"></script>
+	<!--script src="inc/leaflet/L.GeoSearch-master/src/js/l.geosearch.provider.openstreetmap.js"></script-->
+	<script src="inc/leaflet/L.GeoSearch-master/src/js/l.geosearch.provider.google.js"></script>
+	
+	<link rel="stylesheet" href="inc/leaflet/L.GeoSearch-master/src/css/l.geosearch.css" />	
+	
+	<!--script src="area.js" type="text/javascript"></script-->
+	<!--script src="sample.js" type="text/javascript"></script-->
+	<script src="reg.js" type="text/javascript"></script>
+
+	<script src="inc/JS/service.js" type="text/javascript"></script>		
+	<script src="inc/JS/userInterface.js" type="text/javascript"></script>		
+	<!--script src="bsList.js" type="text/javascript"></script-->		
+	<script>
+var titleString = 'Районы Иркутской области(демо режим)';
+var UI = new userInterface();   	
+var coords = []; 		
+var locationList = [];
+var orgList = [];
+var BSType = [];
+var BSLoad = [];
+var BSIndex, BSIndexOver, BSSectorOver;
+var bStations = new Array();
+var ekoRegSimple = new Array();
+var distr;
+var GIS = new gisRoutine();   	
+function gisRoutine()	
+	{
+	this.setTitle = function(type, string)
+		{
+		var strout='';
+		switch (type)
+			{
+			case 'org' : {strout = 'Станции арендодателя <strong>' + string + '</strong>'}
+				break;
+			case 'location' : {strout = 'Станции, расположенные в <strong>' + string + '</strong>'}
+				break;
+			case 'type' : {strout = 'Станции производителя <strong>' + string + '</strong>'}
+				break;
+			case 'load' : {strout = 'Станции в статусе <strong>' + string + '</strong>'}
+				break;
+			
+			}
+		return strout;		
+		}
+	this.menuToggle = function(index)
+		{
+		$('#show_accList').toggleClass('pushed');
+		$('#menuListContaner').css({'top' : '32px'});
+		$('#menuListContaner').slideToggle("slow");
+		}
+	this.BSListItemClick = function(index)
+		{
+		reg[index].poly.openPopup();
+		mymap.setView(reg[index].poly.coordPoint);
+		}
+	this.BSListItemOver = function(index)
+		{
+		reg[index].poly.setStyle({'fillOpacity' : 0.6});
+		}
+	this.BSListItemOut = function(index)
+		{
+		reg[index].poly.setStyle({'fillOpacity' : 0.2});
+		}
+	this.showTitle = function(x, y, title){
+		if($('#titlePoly').css('display') != 'block')
+			{
+			$('#titlePoly').css({'display' : 'block', 'left' : x, 'top' : y});
+			$('#titlePoly').text(title);
+			}
+		}
+	this.hideTitle = function(){
+			$('#titlePoly').css({'display' : 'none'});
+		}
+
+	this.genLocList = function()
+		{
+		var htmCont = "<ul class='accItem'>";		
+		for(var k=0; k<nameReg.length; k++)
+			{
+			htmCont += "<li><span class='activeLink' id='accItemBS_" + k + "'  onMouseOver='GIS.BSListItemOver(" + k + ");' onMouseOut='GIS.BSListItemOut(" + k + 
+									");' onClick='  GIS.BSListItemClick(" + k + ");'>" + nameReg[k] + "</div>";
+			}
+		htmCont += "</ul>";
+		$('#locContaner').html(htmCont);
+		}
+		
+
+	}
+	var  styleSectorBusy = {
+											"color": "#0078ff",
+											"fillColor": "#ff0000",											
+											"weight": 1,
+											"fillOpacity": 0.2,
+											"opacity": 0.5
+										}; 
+var  styleSectorEmpty = {
+											"color": "#0078ff",
+											"fillColor": "#00ff00",											
+											"weight": 1,
+											"fillOpacity": 0.2,
+											"opacity": 0.5
+										}; 
+										
+
+$(document).ready(function(){
+	UI.setSize();   
+	$('#mapid').css({'height' : UI.documentHeight-($('#topContaner').height()+35)});				
+	$('#mapid').css({'width' : UI.documentWidth});
+	$('#show_accList').bind("click", 	function () {/*loadReg();*/ GIS.menuToggle(); } 	);	
+	$('#titleBar').text(titleString);
+	$('#menuListContaner').css({'display' : 'none'});
+	$('#titlePoly').bind("mouseover", 	function () {reg[BSIndexOver].poly.setStyle({'fillOpacity' : 0.6}); $(this).css({'display' : 'block'})});
+	$('#titlePoly').bind("mouseout", 	function () {reg[BSIndexOver].poly.setStyle({'fillOpacity' : 0.2});  $(this).css({'display' : 'none'})});
+	$('#titlePoly').bind("click", 	function () {reg[BSIndexOver].poly.openPopup();  $(this).css({'display' : 'none'})});
+	
+//	parseBSList();
+	/*mymap.setView([52.280, 104.267], 13);*/
+	loadReg();	
+	});
+	$(window).bind("resize", function() {UI.setSize()});
+
+	function loadReg2()		
+		{
+		styleReg = 	{
+										"color": "#222222",
+										"fillColor": "#ff0000",
+										"weight": 1,
+										"fillOpacity": 0.2,
+										"opacity": 0.5
+									};
+		var distr = L.polygon(irkReg,styleReg).addTo(mymap);
+		mymap.fitBounds(irkReg);
+		}
+	function loadReg()		
+		{
+		var east = [], west = [], south = [], north = []; 
+		styleReg = 	{
+										"color": "#222222",
+										"fillColor": "#ff0000",
+										"weight": 1,
+										"fillOpacity": 0.2,
+										"opacity": 0.5
+									};
+		for(var k=0; k<reg.length; k++)        
+			{
+			popupContent = "<div class='balContaner'><div class='balMainInfo'><div class='balName'>" + nameReg[k] + '</div></div></div>';
+			reg[k]['poly'] = L.polygon(reg[k],styleReg).addTo(mymap);
+			reg[k]['poly'].bindPopup(popupContent);
+			reg[k]['poly'].title = nameReg[k];
+			reg[k]['poly'].index = k;
+			reg[k]['poly'].on("mouseout", function (e) {this.setStyle({'fillOpacity' : 0.2}); GIS.hideTitle(); /*BSSectorOver=-1; BSIndexOver = -1;*/});   
+			reg[k]['poly'].on("mouseover", function (e) { this.setStyle({'fillOpacity' : 0.6});  BSIndexOver = this.index; GIS.showTitle(e.originalEvent.clientX, e.originalEvent.clientY, this.title)});   
+			east.push(reg[k]['poly'].getBounds().getEast());
+			west.push(reg[k]['poly'].getBounds().getWest());
+			south.push(reg[k]['poly'].getBounds().getSouth());
+			north.push(reg[k]['poly'].getBounds().getNorth());
+			}
+		mymap.fitBounds([[north.max(),west.min()],[south.min(),east.max()]]);
+		GIS.genLocList();
+		}
+
+	</script>
+</head>
+<body>
+<div id="topToolBarContaner">
+<div id="topToolBar">
+	<div id='userAuth'>
+		<span class='' title="Показать границы районов" id="show_accList">Список</span>
+	</div>
+	<div id='titleBar'>
+		
+		<!--span>
+		Поиск по сайту
+		</span>
+		<input type = 'text' id="searchFast" name="searchFast" class="input_fast_search" value="Введите поисковый запрос..."  onFocus='this.value=""; ' onBlur='clearSearchbarF()'/>  
+		<span id='resMessageF'></span--> 
+
+	</div>
+	<div id='compare' >
+	</div>
+	<div id='moveUp'>
+	 <span title='вверх' id='up' onClick='$(window).scrollTop(0);'>&uarr;</span>
+	</div>
+</div>	
+</div>	
+	<div id="titlePoly" >
+	</div>
+	<div id="mapid" style=''>
+	</div>
+	<div id="menuListContaner">
+			<div class='accContent' id="locContaner"  >			
+				<ul class='accItem'>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Маяковского, ТЭЦ12, крыша КТЦ</span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>г. Черемхово, ул. Первомайская, 45 ЧРЭС        </span></li>
+					<li><span class='activeLink' id='accItem_'>Черемховский р-он, г. Свирск РТПЦ              </span></li>
+				</ul>
+			</div>
+	</div>	
+	<script>
+	var mymap = L.map('mapid');	
+//	mymap.fitBounds([[minlat,minlng],[maxlat,maxlng]]);
+
+	</script>
+	<script src="inc/JS/baseLayers.js" type="text/javascript"></script>	
+	<script>
+	</script>
+
+
+
+</body>
+</html>

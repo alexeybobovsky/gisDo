@@ -1,0 +1,1 @@
+<div id = 'mainContent' ><h2>{$title}</h2></div>

@@ -1,0 +1,1 @@
+<DIV id='copyright' >	<SPAN>©&nbsp;{$header.curYear}</SPAN> «<A       href="/">ГОРОД-ДЕТЯМ.РФ</A>» <BR>	  {$header.userDisplayName}&nbsp;&bull;&nbsp;	  <A href="/feedback">Обратная&nbsp;связь</A>&nbsp;&bull;&nbsp;	  <A href="/advert">Реклама&nbsp;на&nbsp;сайте</A>       </DIV></body></html>
